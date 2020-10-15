@@ -61,11 +61,48 @@
           <p class="card-text">{{ today.totalCases }}</p>
         </div>
       </div>
-      <div class="card text-white bg-dark mb-3" style="max-width: 18rem;">
+      <!-- <div class="card text-white bg-dark mb-3" style="max-width: 18rem;">
         <div class="card-header">Tamponi</div>
         <div class="card-body">
           <h5 class="card-title">Tamponi Totali</h5>
           <p class="card-text">{{ today.totalTests }}</p>
+        </div>
+      </div> -->
+    </div>
+    <div class="container">
+      <div class="row">
+        <div class="col-sm-4">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Record contagi</h5>
+              <p class="card-text" style="color: var(--danger);font-size: 2em">
+                {{ records.confirmed.value }}
+              </p>
+              <div>{{ records.confirmed.date }}</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-4">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Record morti</h5>
+              <p class="card-text" style="color: var(--primary);font-size: 2em">
+                {{ records.deaths.value }}
+              </p>
+              <div>{{ records.deaths.date }}</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-4">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Tamponi totali</h5>
+              <p class="card-text" style="color: var(--dark);font-size: 2em">
+                {{ today.totalTests }}
+              </p>
+              <div>{{ getTodayDate() }}</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -86,13 +123,23 @@
 </template>
 
 <script>
-import { ref } from "vue";
+import { reactive, ref } from "vue";
 import Chart from "chart.js";
 import fetch from "cross-fetch";
 
 export default {
   setup() {
     let status = ref(false);
+    let records = reactive({
+      deaths: {
+        value: 0,
+        date: ""
+      },
+      confirmed: {
+        value: 0,
+        date: ""
+      }
+    });
     const city = ref("");
     const today = ref({
       deaths: 0,
@@ -104,8 +151,10 @@ export default {
     let recoveredSet = [];
     let dailyConfirmedSet = [0];
     let dailyDeathsSet = [0];
+
     let labels = [];
     let chart, chart2;
+
     const API_URL_TODAY = "https://coronavirus-19-api.herokuapp.com/countries";
     const API_URL_ALL = "https://api.covid19api.com/dayone/country/";
     async function getData() {
@@ -130,18 +179,41 @@ export default {
         confirmedSet = [];
         recoveredSet = [];
         labels = [];
+
         dailyConfirmedSet = [0];
         dailyDeathsSet = [0];
 
         let prevConf, prevDeaths;
+
+        let deathsRecord = {
+          value: 0,
+          date: ""
+        };
+
+        let confirmedRecord = {
+          value: 0,
+          date: ""
+        };
+
+
         allData.forEach((obj, i) => {
           let lab = " ";
+
           if (i > 0) {
             const value = Math.abs(obj.Confirmed - prevConf);
             dailyConfirmedSet.push(value);
+            if (value && value > confirmedRecord.value) {
+              confirmedRecord.value = value;
+              confirmedRecord.date = dateFormat(obj.Date);
+            }
 
             const valueDeaths = Math.abs(obj.Deaths - prevDeaths);
             dailyDeathsSet.push(valueDeaths);
+            if (valueDeaths && valueDeaths > deathsRecord.value) {
+              deathsRecord.value = valueDeaths;
+              deathsRecord.date = dateFormat(obj.Date);
+            }
+
           }
           prevConf = obj.Confirmed;
           prevDeaths = obj.Deaths;
@@ -150,13 +222,13 @@ export default {
           confirmedSet.push(obj.Confirmed);
           recoveredSet.push(obj.Recovered);
           if (i % 1 === 0) {
-            lab = obj.Date.split("T")[0]
-              .split("-")
-              .reverse()
-              .join("-");
+            lab = dateFormat(obj.Date);
           }
           labels.push(lab);
         });
+
+        records.deaths = deathsRecord;
+        records.confirmed = confirmedRecord;
 
         // console.log(allData);
         if (todayData.length === 0) {
@@ -177,6 +249,21 @@ export default {
 
         dailyConfirmedSet.push(today.value.confirmed);
         dailyDeathsSet.push(today.value.deaths);
+
+        // Check if last item is the record
+        if (dailyDeathsSet[dailyDeathsSet.length - 1] > deathsRecord.value) {
+          deathsRecord.value = dailyDeathsSet[dailyDeathsSet.length - 1];
+          deathsRecord.date = getTodayDate();
+        }
+        if (
+          dailyConfirmedSet[dailyConfirmedSet.length - 1] >
+          confirmedRecord.value
+        ) {
+          confirmedRecord.value =
+            dailyConfirmedSet[dailyConfirmedSet.length - 1];
+          confirmedRecord.date = getTodayDate();
+        }
+
         labels.push(getTodayDate());
 
         const ctx2 = document.getElementById("chart2").getContext("2d");
@@ -249,13 +336,21 @@ export default {
       }
     }
 
+    const dateFormat = date => {
+      return date
+        .split("T")[0]
+        .split("-")
+        .reverse()
+        .join("/");
+    };
+
     const getTodayDate = () => {
       let today = new Date();
       const dd = String(today.getDate()).padStart(2, "0");
       const mm = String(today.getMonth() + 1).padStart(2, "0"); //January is 0!
       const yyyy = today.getFullYear();
 
-      today = mm + "/" + dd + "/" + yyyy;
+      today = dd + "/" + mm + "/" + yyyy;
       return today;
     };
 
@@ -265,7 +360,9 @@ export default {
       today,
       status,
       chart,
-      chart2
+      chart2,
+      records,
+      getTodayDate
     };
   }
 };
