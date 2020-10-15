@@ -36,14 +36,14 @@
       <div class="card text-white bg-primary mb-3" style="max-width: 18rem;">
         <div class="card-header">Morti</div>
         <div class="card-body">
-          <h5 class="card-title">Morti Totali</h5>
+          <h5 class="card-title">Morti giornalieri</h5>
           <p class="card-text">{{ today.deaths }}</p>
         </div>
       </div>
-      <div class="card text-white bg-info mb-3" style="max-width: 18rem;">
+      <div class="card text-white bg-danger mb-3" style="max-width: 18rem;">
         <div class="card-header">Confermati</div>
         <div class="card-body">
-          <h5 class="card-title">Confermati Totali</h5>
+          <h5 class="card-title">Confermati giornalieri</h5>
           <p class="card-text">{{ today.confirmed }}</p>
         </div>
       </div>
@@ -54,32 +54,34 @@
           <p class="card-text">{{ today.recovered }}</p>
         </div>
       </div>
-      <div class="card text-dark bg-warning mb-3" style="max-width: 18rem;">
-        <div class="card-header">Percentuale morti</div>
+      <div class="card text-light bg-info mb-3" style="max-width: 18rem;">
+        <div class="card-header">Positivi totali</div>
         <div class="card-body">
-          <h5 class="card-title">% morti</h5>
-          <p class="card-text">{{ today.d_rate }}%</p>
-        </div>
-      </div>
-      <div class="card text-white bg-danger mb-3" style="max-width: 18rem;">
-        <div class="card-header">Casi per milione</div>
-        <div class="card-body">
-          <h5 class="card-title">Casi positivi per milione</h5>
-          <p class="card-text">{{ today.per_milion }}</p>
+          <h5 class="card-title">Casi totali</h5>
+          <p class="card-text">{{ today.totalCases }}</p>
         </div>
       </div>
       <div class="card text-white bg-dark mb-3" style="max-width: 18rem;">
-        <div class="card-header">Popolazione</div>
+        <div class="card-header">Tamponi</div>
         <div class="card-body">
-          <h5 class="card-title">Popolazione</h5>
-          <p class="card-text">{{ today.population }}</p>
+          <h5 class="card-title">Tamponi Totali</h5>
+          <p class="card-text">{{ today.totalTests }}</p>
         </div>
       </div>
     </div>
-    <div class="mt-3">Aggiornato: {{ today.date }} {{ today.time }}</div>
+    <!-- <div class="mt-3">Aggiornato: {{ today.date }} {{ today.time }}</div> -->
   </div>
   <div class="container mt-5">
-    <canvas id="chart"></canvas>
+    <div>
+      <h1>Statistiche totali</h1>
+      <canvas id="chart"></canvas>
+    </div>
+    <div class="container mt-5">
+      <div>
+        <h1>Statistiche giornaliere</h1>
+        <canvas id="chart2"></canvas>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -100,19 +102,28 @@ export default {
     let deathsSet = [];
     let confirmedSet = [];
     let recoveredSet = [];
+    let dailyConfirmedSet = [0];
+    let dailyDeathsSet = [0];
     let labels = [];
-    let chart;
-    const API_URL_TODAY = "https://corona-api.com/countries";
+    let chart, chart2;
+    // const API_URL_TODAY = "https://corona-api.com/countries";
+    const API_URL_TODAY = "https://coronavirus-19-api.herokuapp.com/countries";
     const API_URL_ALL = "https://api.covid19api.com/dayone/country/";
     async function getData() {
       try {
-        const response = await fetch(API_URL_TODAY, {
-          method: "GET",
-          redirect: "follow"
-        });
+        // const response = await fetch(API_URL_TODAY, {
+        //   method: "GET",
+        //   redirect: "follow"
+        // });
+        // let todayData = await response.json();
+        // todayData = todayData.data.filter(
+        //   obj => obj.name.toLowerCase() === city.value.toLowerCase()
+        // );
+
+        const response = await fetch(API_URL_TODAY);
         let todayData = await response.json();
-        todayData = todayData.data.filter(
-          obj => obj.name.toLowerCase() === city.value.toLowerCase()
+        todayData = todayData.filter(
+          obj => obj.country.toLowerCase() === city.value.toLowerCase()
         );
 
         const totalResponse = await fetch(
@@ -129,13 +140,26 @@ export default {
         confirmedSet = [];
         recoveredSet = [];
         labels = [];
+        dailyConfirmedSet = [0];
+        dailyDeathsSet = [0];
 
+        let prevConf, prevDeaths;
         allData.forEach((obj, i) => {
           let lab = " ";
+          if (i > 0) {
+            const value = Math.abs(obj.Confirmed - prevConf);
+            dailyConfirmedSet.push(value);
+
+            const valueDeaths = Math.abs(obj.Deaths - prevDeaths);
+            dailyDeathsSet.push(valueDeaths);
+          }
+          prevConf = obj.Confirmed;
+          prevDeaths = obj.Deaths;
+
           deathsSet.push(obj.Deaths);
           confirmedSet.push(obj.Confirmed);
           recoveredSet.push(obj.Recovered);
-          if (i % 10 === 0) {
+          if (i % 1 === 0) {
             lab = obj.Date.split("T")[0]
               .split("-")
               .reverse()
@@ -151,31 +175,73 @@ export default {
         } else {
           // console.log(todayData[0].today);
           status.value = true;
-          let updated = todayData[0].updated_at;
-          let [date, time] = updated.split("T");
-          date = date
-            .split("-")
-            .reverse()
-            .join("/");
-          time = time.split(".")[0];
+          // let updated = todayData[0].updated_at;
+          // let [date, time] = updated.split("T");
+          // date = date
+          //   .split("-")
+          //   .reverse()
+          //   .join("/");
+          // time = time.split(".")[0];
+          // today.value = {
+          //   deaths: todayData[0].latest_data.deaths,
+          //   confirmed: todayData[0].latest_data.confirmed,
+          //   recovered:
+          //     todayData[0].latest_data.recovered |
+          //     recoveredSet[recoveredSet.length - 1],
+          //   name: todayData[0].name,
+          //   population: todayData[0].population,
+          //   per_milion:
+          //     todayData[0].latest_data.calculated.cases_per_million_population,
+          //   d_rate: (
+          //     "" + todayData[0].latest_data.calculated.death_rate
+          //   ).substr(0, 4),
+          //   date,
+          //   time
+          // };
           today.value = {
-            deaths: todayData[0].latest_data.deaths,
-            confirmed: todayData[0].latest_data.confirmed,
-            recovered:
-              todayData[0].latest_data.recovered |
-              recoveredSet[recoveredSet.length - 1],
-            name: todayData[0].name,
-            population: todayData[0].population,
-            per_milion:
-              todayData[0].latest_data.calculated.cases_per_million_population,
-            d_rate: (
-              "" + todayData[0].latest_data.calculated.death_rate
-            ).substr(0, 4),
-            date,
-            time
+            deaths: todayData[0].todayDeaths,
+            confirmed: todayData[0].todayCases,
+            recovered: todayData[0].recovered,
+            name: todayData[0].country,
+            totalCases: todayData[0].cases,
+            deathsPerMilion: todayData[0].deathsPerOneMillion,
+            totalTests: todayData[0].totalTests
           };
         }
 
+        dailyConfirmedSet.push(today.value.confirmed);
+        dailyDeathsSet.push(today.value.deaths);
+        labels.push(getTodayDate());
+
+        const ctx2 = document.getElementById("chart2").getContext("2d");
+        if (chart2) {
+          chart2.destroy();
+        }
+        chart2 = new Chart(ctx2, {
+          type: "line",
+          data: {
+            labels,
+            datasets: [
+              {
+                label: "Positivi giornalieri",
+                backgroundColor: "#dc354580",
+                borderColor: "#dc3545",
+                pointRadius: 0,
+                data: dailyConfirmedSet
+              },
+              {
+                label: "Morti giornalieri",
+                backgroundColor: "#007bff88",
+                borderColor: "#007bff",
+                pointRadius: 0,
+                data: dailyDeathsSet
+              }
+            ]
+          },
+          options: {
+            showXLabels: 10
+          }
+        });
         const ctx = document.getElementById("chart").getContext("2d");
         if (chart) {
           chart.destroy();
@@ -216,12 +282,24 @@ export default {
         console.error(error);
       }
     }
+
+    const getTodayDate = () => {
+      let today = new Date();
+      const dd = String(today.getDate()).padStart(2, "0");
+      const mm = String(today.getMonth() + 1).padStart(2, "0"); //January is 0!
+      const yyyy = today.getFullYear();
+
+      today = mm + "/" + dd + "/" + yyyy;
+      return today;
+    };
+
     return {
       getData,
       city,
       today,
       status,
-      chart
+      chart,
+      chart2
     };
   }
 };
