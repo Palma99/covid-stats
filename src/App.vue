@@ -106,20 +106,10 @@ export default {
     let dailyDeathsSet = [0];
     let labels = [];
     let chart, chart2;
-    // const API_URL_TODAY = "https://corona-api.com/countries";
     const API_URL_TODAY = "https://coronavirus-19-api.herokuapp.com/countries";
     const API_URL_ALL = "https://api.covid19api.com/dayone/country/";
     async function getData() {
       try {
-        // const response = await fetch(API_URL_TODAY, {
-        //   method: "GET",
-        //   redirect: "follow"
-        // });
-        // let todayData = await response.json();
-        // todayData = todayData.data.filter(
-        //   obj => obj.name.toLowerCase() === city.value.toLowerCase()
-        // );
-
         const response = await fetch(API_URL_TODAY);
         let todayData = await response.json();
         todayData = todayData.filter(
@@ -173,31 +163,7 @@ export default {
           status.value = false;
           console.log("Paese non valido");
         } else {
-          // console.log(todayData[0].today);
           status.value = true;
-          // let updated = todayData[0].updated_at;
-          // let [date, time] = updated.split("T");
-          // date = date
-          //   .split("-")
-          //   .reverse()
-          //   .join("/");
-          // time = time.split(".")[0];
-          // today.value = {
-          //   deaths: todayData[0].latest_data.deaths,
-          //   confirmed: todayData[0].latest_data.confirmed,
-          //   recovered:
-          //     todayData[0].latest_data.recovered |
-          //     recoveredSet[recoveredSet.length - 1],
-          //   name: todayData[0].name,
-          //   population: todayData[0].population,
-          //   per_milion:
-          //     todayData[0].latest_data.calculated.cases_per_million_population,
-          //   d_rate: (
-          //     "" + todayData[0].latest_data.calculated.death_rate
-          //   ).substr(0, 4),
-          //   date,
-          //   time
-          // };
           today.value = {
             deaths: todayData[0].todayDeaths,
             confirmed: todayData[0].todayCases,
