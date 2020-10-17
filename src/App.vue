@@ -1,6 +1,13 @@
 <template>
   <nav class="navbar navbar-expand navbar-dark bg-dark">
-    <a class="navbar-brand" href="#">Covid Stats</a>
+    <div class="navbar-brand">Covid Stats</div>
+    <ul class="navbar-nav mr-auto">
+      <li class="nav-item active">
+        <a class="nav-link" style="cursor:pointer;" @click="showHome"
+          >Dati globali</a
+        >
+      </li>
+    </ul>
     <button
       class="navbar-toggler"
       type="button"
@@ -30,6 +37,19 @@
       </form>
     </div>
   </nav>
+
+  <Home v-if="home" />
+
+  <!-- Error message -->
+  <div v-if="error" class="mt-5 error-msg">
+    <h1 style="font-size: 4em;">Paese non valido</h1>
+  </div>
+
+  <!-- Loading Logo -->
+  <div v-if="loading" class="container mt-3" style="text-align: center;">
+    <img src="./assets/Loading.svg" />
+  </div>
+
   <div v-if="status" class="container mt-3">
     <h1>Statistiche {{ today.name }}</h1>
     <div class="card-group mt-4" style="justify-content: center;">
@@ -61,13 +81,6 @@
           <p class="card-text">{{ today.totalCases }}</p>
         </div>
       </div>
-      <!-- <div class="card text-white bg-dark mb-3" style="max-width: 18rem;">
-        <div class="card-header">Tamponi</div>
-        <div class="card-body">
-          <h5 class="card-title">Tamponi Totali</h5>
-          <p class="card-text">{{ today.totalTests }}</p>
-        </div>
-      </div> -->
     </div>
     <div class="container">
       <div class="row">
@@ -106,14 +119,13 @@
         </div>
       </div>
     </div>
-    <!-- <div class="mt-3">Aggiornato: {{ today.date }} {{ today.time }}</div> -->
   </div>
-  <div class="container mt-5">
+  <div class="container mt-5" v-show="status">
     <div>
       <h1>Statistiche totali</h1>
       <canvas id="chart"></canvas>
     </div>
-    <div class="container mt-5">
+    <div class="container mt-5 mb-3">
       <div>
         <h1>Statistiche giornaliere</h1>
         <canvas id="chart2"></canvas>
@@ -124,12 +136,20 @@
 
 <script>
 import { reactive, ref } from "vue";
+import Home from "./components/Home";
+
 import Chart from "chart.js";
 import fetch from "cross-fetch";
 
 export default {
+  components: {
+    Home
+  },
   setup() {
+    let loading = ref(false);
+    let home = ref(true);
     let status = ref(false);
+    let error = ref(false);
     let records = reactive({
       deaths: {
         value: 0,
@@ -157,7 +177,19 @@ export default {
 
     const API_URL_TODAY = "https://coronavirus-19-api.herokuapp.com/countries";
     const API_URL_ALL = "https://api.covid19api.com/dayone/country/";
+
+    function showHome() {
+      status.value = false;
+      home.value = true;
+      error.value = false;
+      loading.value = false;
+    }
+
     async function getData() {
+      loading.value = true;
+      error.value = false;
+      status.value = false;
+      home.value = false;
       try {
         const response = await fetch(API_URL_TODAY);
         let todayData = await response.json();
@@ -174,6 +206,8 @@ export default {
         );
 
         const allData = await totalResponse.json();
+
+        loading.value = false;
 
         deathsSet = [];
         confirmedSet = [];
@@ -195,7 +229,6 @@ export default {
           date: ""
         };
 
-
         allData.forEach((obj, i) => {
           let lab = " ";
 
@@ -213,7 +246,6 @@ export default {
               deathsRecord.value = valueDeaths;
               deathsRecord.date = dateFormat(obj.Date);
             }
-
           }
           prevConf = obj.Confirmed;
           prevDeaths = obj.Deaths;
@@ -265,74 +297,75 @@ export default {
         }
 
         labels.push(getTodayDate());
-
-        const ctx2 = document.getElementById("chart2").getContext("2d");
-        if (chart2) {
-          chart2.destroy();
-        }
-        chart2 = new Chart(ctx2, {
-          type: "line",
-          data: {
-            labels,
-            datasets: [
-              {
-                label: "Positivi giornalieri",
-                backgroundColor: "#dc354580",
-                borderColor: "#dc3545",
-                pointRadius: 0,
-                data: dailyConfirmedSet
-              },
-              {
-                label: "Morti giornalieri",
-                backgroundColor: "#007bff88",
-                borderColor: "#007bff",
-                pointRadius: 0,
-                data: dailyDeathsSet
-              }
-            ]
-          },
-          options: {
-            showXLabels: 10
+        if (status.value) {
+          const ctx2 = document.getElementById("chart2").getContext("2d");
+          if (chart2) {
+            chart2.destroy();
           }
-        });
-        const ctx = document.getElementById("chart").getContext("2d");
-        if (chart) {
-          chart.destroy();
-        }
-        chart = new Chart(ctx, {
-          type: "line",
-          data: {
-            labels,
-            datasets: [
-              {
-                label: "Morti",
-                backgroundColor: "rgb(0, 123, 255, 0.5)",
-                borderColor: "rgb(0, 123, 255)",
-                pointRadius: 0,
-                data: deathsSet
-              },
-              {
-                label: "Confermati",
-                backgroundColor: "rgb(23, 162, 184, 0.5)",
-                borderColor: "rgb(23, 162, 184)",
-                pointRadius: 0,
-                data: confirmedSet
-              },
-              {
-                label: "Guariti",
-                backgroundColor: "rgb(40, 167, 69, 0.5)",
-                borderColor: "rgb(40, 167, 69)",
-                pointRadius: 0,
-                data: recoveredSet
-              }
-            ]
-          },
-          options: {
-            showXLabels: 10
+          chart2 = new Chart(ctx2, {
+            type: "line",
+            data: {
+              labels,
+              datasets: [
+                {
+                  label: "Positivi giornalieri",
+                  backgroundColor: "#dc354580",
+                  borderColor: "#dc3545",
+                  pointRadius: 0,
+                  data: dailyConfirmedSet
+                },
+                {
+                  label: "Morti giornalieri",
+                  backgroundColor: "#007bff88",
+                  borderColor: "#007bff",
+                  pointRadius: 0,
+                  data: dailyDeathsSet
+                }
+              ]
+            },
+            options: {
+              showXLabels: 10
+            }
+          });
+          const ctx = document.getElementById("chart").getContext("2d");
+          if (chart) {
+            chart.destroy();
           }
-        });
-      } catch (error) {
-        console.error(error);
+          chart = new Chart(ctx, {
+            type: "line",
+            data: {
+              labels,
+              datasets: [
+                {
+                  label: "Morti",
+                  backgroundColor: "rgb(0, 123, 255, 0.5)",
+                  borderColor: "rgb(0, 123, 255)",
+                  pointRadius: 0,
+                  data: deathsSet
+                },
+                {
+                  label: "Confermati",
+                  backgroundColor: "rgb(23, 162, 184, 0.5)",
+                  borderColor: "rgb(23, 162, 184)",
+                  pointRadius: 0,
+                  data: confirmedSet
+                },
+                {
+                  label: "Guariti",
+                  backgroundColor: "rgb(40, 167, 69, 0.5)",
+                  borderColor: "rgb(40, 167, 69)",
+                  pointRadius: 0,
+                  data: recoveredSet
+                }
+              ]
+            },
+            options: {
+              showXLabels: 10
+            }
+          });
+        }
+      } catch (err) {
+        error.value = true;
       }
     }
 
@@ -362,10 +395,18 @@ export default {
       chart,
       chart2,
       records,
-      getTodayDate
+      getTodayDate,
+      error,
+      home,
+      loading,
+      showHome
     };
   }
 };
 </script>
 
-<style lang="scss"></style>
+<style lang="scss">
+.error-msg {
+  text-align: center;
+}
+</style>
